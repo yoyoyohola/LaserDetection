@@ -1,0 +1,21 @@
+!!python/object/new:dynamic_reconfigure.encoding.Config
+dictitems:
+  groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+    dictitems:
+      groups: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      id: 0
+      name: Default
+      parameters: !!python/object/new:dynamic_reconfigure.encoding.Config
+        state: []
+      parent: 0
+      state: true
+      theta: -86.4
+      type: ''
+      x: -14.6
+      y: 62.63
+    state: []
+  theta: -86.4
+  x: -14.6
+  y: 62.63
+state: []
