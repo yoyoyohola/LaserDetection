@@ -8,6 +8,7 @@ project(laser_detection)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  message_generation
   interactive_markers
   nav_msgs
   roscpp
@@ -56,6 +57,11 @@ find_package(catkin REQUIRED COMPONENTS
 #   Message1.msg
 #   Message2.msg
 # )
+ add_message_files(
+   FILES
+   Landmark2D.msg
+   Landmark2DList.msg
+ )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -76,6 +82,11 @@ find_package(catkin REQUIRED COMPONENTS
 #   DEPENDENCIES
 #   nav_msgs#   sensor_msgs#   std_msgs
 # )
+ generate_messages(
+   DEPENDENCIES
+   std_msgs
+
+ )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -112,7 +123,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES laser_detection
-#  CATKIN_DEPENDS interactive_markers nav_msgs roscpp sensor_msgs std_msgs tf
+#  CATKIN_DEPENDS interactive_markers nav_msgs roscpp sensor_msgs std_msgs tf message_runtime
 #  DEPENDS system_lib
 )
 
@@ -123,14 +134,15 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/laser_detection.cpp
-# )
+ add_library(${PROJECT_NAME}
+   #src/${PROJECT_NAME}/laser_detection.cpp
+   src/landmark_detector.cc
+ )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -141,8 +153,9 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/laser_detection_node.cc)
- add_executable(${PROJECT_NAME}_node src/laser_detection_node.cc)
+ add_executable(${PROJECT_NAME}_node src/laser_detection_node.cc src/landmark_detector.cc)
  add_executable(align_prior_landmark_node src/align_prior_landmark_node.cc)
+ add_executable(landmark_detector_node src/landmark_detector_node.cc src/landmark_detector.cc)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -161,9 +174,15 @@ add_dependencies(align_prior_landmark_node ${PROJECT_NAME}_gencfg)
 # )
  target_link_libraries(${PROJECT_NAME}_node
    ${catkin_LIBRARIES}
+   ${PROJECT_NAME}
  )
  target_link_libraries(align_prior_landmark_node
    ${catkin_LIBRARIES}
+   ${PROJECT_NAME}
+ )
+ target_link_libraries(landmark_detector_node
+   ${catkin_LIBRARIES}
+   ${PROJECT_NAME}
  )
 
 #############
