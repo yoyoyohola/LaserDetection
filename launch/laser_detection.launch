@@ -5,12 +5,12 @@
   * @version: v0.0.1
   * @author: kwhu@visionnav.com
   * @create_date: 2019-04-01 14:57:22
-  * @last_modified_date: 2019-04-18 11:44:56
+  * @last_modified_date: 2019-04-18 12:31:38
   * @brief: TODO
   * @details: TODO
   *-->
 
 <launch>
-  <node pkg="laser_detection" type="landmark_detector_node" name="laser_detection_node" args="$(find laser_detection)/data/poster_landmarks_align.txt poster" output="screen">
+  <node pkg="laser_detection" type="laser_detection_node" name="laser_detection_node" args="$(find laser_detection)/data/prior_landmark_align_manual.txt" output="screen">
   </node>
 </launch>

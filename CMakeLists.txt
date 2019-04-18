@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   dynamic_reconfigure
+  cartographer_ros_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -153,9 +154,11 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/laser_detection_node.cc)
- add_executable(${PROJECT_NAME}_node src/laser_detection_node.cc src/landmark_detector.cc)
+ add_executable(laser_detection_node src/laser_detection_node.cc src/landmark_detector.cc)
  add_executable(align_prior_landmark_node src/align_prior_landmark_node.cc)
  add_executable(landmark_detector_node src/landmark_detector_node.cc src/landmark_detector.cc)
+
+ add_executable(generate_poster_landmarker_node src/generate_poster_landmark.cc src/landmark_detector.cc)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -181,6 +184,11 @@ add_dependencies(align_prior_landmark_node ${PROJECT_NAME}_gencfg)
    ${PROJECT_NAME}
  )
  target_link_libraries(landmark_detector_node
+   ${catkin_LIBRARIES}
+   ${PROJECT_NAME}
+ )
+
+ target_link_libraries(generate_poster_landmarker_node
    ${catkin_LIBRARIES}
    ${PROJECT_NAME}
  )
