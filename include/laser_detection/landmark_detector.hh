@@ -7,7 +7,7 @@
   * @version: v0.0.1
   * @author: kwhu@visionnav.com
   * @create_date: 2019-04-16 16:54:09
-  * @last_modified_date: 2019-04-18 12:43:58
+  * @last_modified_date: 2019-04-19 13:26:13
   * @brief: TODO
   * @details: TODO
   *-----------------------------------------------*/
@@ -24,7 +24,7 @@
 #include <fstream>
 
 // Declaration
-struct Landmark : public std::enable_shared_from_this<Landmark>
+class Landmark : public std::enable_shared_from_this<Landmark>
 {
   public:  
     using Ptr = std::shared_ptr<Landmark>;
@@ -34,6 +34,7 @@ struct Landmark : public std::enable_shared_from_this<Landmark>
       :ptr_attached_landmark_(nullptr),
        position_(x, y, z),
        position_tf_(x, y, z),
+       position_map_(x, y, z),
        position_mean_(x, y, z),
        position_submap_(x, y, z),
        quat_(0, 0, 0, 1),
@@ -48,7 +49,7 @@ struct Landmark : public std::enable_shared_from_this<Landmark>
     inline void transform(const tf::StampedTransform& tf)
     {
       //position_tf_ =  tf * position_;
-      transform(tf, position_);
+      this->transform(tf, position_);
     };
 
     inline void transform(const tf::StampedTransform& tf, const tf::Vector3& position)
@@ -110,7 +111,7 @@ struct Landmark : public std::enable_shared_from_this<Landmark>
     { 
       ++num_observation_;
       cluster_landmarks_.emplace_back(ptr_landmark);
-      update();
+      //update();
     }
 
     inline const tf::Vector3& getPositionAtMap()
@@ -128,6 +129,7 @@ struct Landmark : public std::enable_shared_from_this<Landmark>
     Landmark::Ptr ptr_attached_landmark_;
     tf::Vector3 position_;
     tf::Vector3 position_tf_;
+    tf::Vector3 position_map_;
     tf::Vector3 position_mean_;
     tf::Vector3 position_submap_;
     double covariance[4];
@@ -162,6 +164,8 @@ class LandmarkDetector
       return newPotentialLandmark(point.point.x, point.point.y, point.point.z);
     }
 
+    bool newPotentialLandmark(Landmark::Ptr& ptr_potential_landmark);
+
     bool isAttached(const Landmark::Ptr& ptr_landmark,
                     const Landmark::Ptr& ptr_potential_landmark);
 
@@ -172,7 +176,7 @@ class LandmarkDetector
     { return landmarks_; }
     void updateSubmapList(const cartographer_ros_msgs::SubmapList::ConstPtr& ptr_submap_list);
 
-    std::vector<Landmark::Ptr> detectMarker(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data, const tf::StampedTransform& tf_info);
+    std::vector<Landmark::Ptr> detectLandmark(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data, const tf::StampedTransform& tf_info);
 
   private:
     std::vector<Landmark::Ptr> landmarks_;
@@ -191,11 +195,11 @@ class ReflectionMarker
     ~ReflectionMarker() = default;
   public:
     void publishMarker();
-    void drawLandmark(const std::vector<Landmark::Ptr>& detected_landmarks);
+    void drawLandmark(const std::vector<Landmark::Ptr>& detected_landmarks, const tf::StampedTransform& tf_info);
     void drawPriorLandmark();
     void detectMarkerCallback(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data);
     void detectMarkerWithSubmapCallback(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data);
-    //std::vector<Landmark::Ptr> detectMarker(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data, const tf::StampedTransform& tf_info);
+    //std::vector<Landmark::Ptr> detectLandmark(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data, const tf::StampedTransform& tf_info);
     void detectLandmarkCallback(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data);
     void updateLaserScan(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data)
     {
@@ -206,7 +210,7 @@ class ReflectionMarker
       //ROS_INFO_STREAM("Update submap_list");
       //submap_list_ = *ptr_submap_list;
       ptr_detector_->updateSubmapList(ptr_submap_list);
-      ROS_INFO_STREAM("SubmapList size: " << ptr_submap_list->submap.size());
+      //ROS_INFO_STREAM("SubmapList size: " << ptr_submap_list->submap.size());
     }
 
     inline void run_update_map()
@@ -223,32 +227,20 @@ class ReflectionMarker
       }
       signal(SIGINT, handler_submap);
       ptr_scan_data_ = nullptr;
-      laser_sub_ = ptr_nh_->subscribe("scan", 2, &ReflectionMarker::updateLaserScan, this);
+      //laser_sub_ = ptr_nh_->subscribe("scan", 2, &ReflectionMarker::updateLaserScan, this);
       //laser_sub_ = ptr_nh_->subscribe("scan", 2, &ReflectionMarker::detectMarkerCallback, this);
+      laser_sub_ = ptr_nh_->subscribe("scan", 2, &ReflectionMarker::detectMarkerWithSubmapCallback, this);
       submap_list_sub_ = ptr_nh_->subscribe("submap_list", 1, &ReflectionMarker::updateSubmapCallback, this);
       marker_pub_ = ptr_nh_->advertise<visualization_msgs::Marker>("reflection_mark", 2);
       marker_map_pub_ = ptr_nh_->advertise<visualization_msgs::Marker>("reflection_mark_map", 10);
       marker_prior_pub_ = ptr_nh_->advertise<visualization_msgs::Marker>("prior_mark", 2);
 
       drawPriorLandmark();
-      //ROS_INFO_STREAM("Size of prior: " << marker_prior_.points.size());
-      //ROS_INFO_STREAM("Size of prior: " << prior_landmarks.size());
-      //marker_prior
       while(ros::ok())
       {
         ros::spinOnce();
-        detectMarkerWithSubmapCallback(ptr_scan_data_);
+        //detectMarkerWithSubmapCallback(ptr_scan_data_);
         publishMarker();
-        //try
-        //{
-        //  tf::StampedTransform tmp_tf;
-        //  listener_->lookupTransform("laser", "map", ros::Time(0), tmp_tf);
-        //}
-        //catch (tf::TransformException ex)
-        //{
-        //  ROS_ERROR("%s", ex.what());
-        //  ros::Duration(0.1).sleep();
-        //}
       }
     }
 
@@ -273,25 +265,13 @@ class ReflectionMarker
       marker_prior_pub_ = ptr_nh_->advertise<visualization_msgs::Marker>("prior_mark", 2);
 
       drawPriorLandmark();
-      //ROS_INFO_STREAM("Size of prior: " << marker_prior_.points.size());
-      //ROS_INFO_STREAM("Size of prior: " << prior_landmarks.size());
-      //marker_prior
       while(ros::ok())
       {
         ros::spinOnce();
         publishMarker();
-        //try
-        //{
-        //  tf::StampedTransform tmp_tf;
-        //  listener_->lookupTransform("laser", "map", ros::Time(0), tmp_tf);
-        //}
-        //catch (tf::TransformException ex)
-        //{
-        //  ROS_ERROR("%s", ex.what());
-        //  ros::Duration(0.1).sleep();
-        //}
       }
     }
+
     inline void run_detect_landmark()
     {
       tf::StampedTransform tf_info;

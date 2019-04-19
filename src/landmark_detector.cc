@@ -5,7 +5,7 @@
   * @version: v0.0.1
   * @author: kwhu@visionnav.com
   * @create_date: 2019-04-17 09:04:02
-  * @last_modified_date: 2019-04-18 13:00:36
+  * @last_modified_date: 2019-04-19 14:14:26
   * @brief: TODO
   * @details: TODO
   */
@@ -42,8 +42,8 @@ void ReflectionMarker::detectLandmarkCallback(const sensor_msgs::LaserScan::Cons
     ROS_ERROR("%s", ex.what());
     return;
   }
-  auto detected_landmarks = ptr_detector_->detectMarker(ptr_scan_data, tf_info);
-  drawLandmark(detected_landmarks);
+  auto detected_landmarks = ptr_detector_->detectLandmark(ptr_scan_data, tf_info);
+  drawLandmark(detected_landmarks, tf_info);
 }
 
 void ReflectionMarker::detectMarkerCallback(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data)
@@ -112,7 +112,10 @@ void ReflectionMarker::detectMarkerCallback(const sensor_msgs::LaserScan::ConstP
       p_map.point.x = point_map.getX();
       p_map.point.y = point_map.getY();
       p_map.point.z = 0.0;
+      //ROS_WARN_STREAM("Just test pass tf");
+      ROS_INFO_STREAM("p_map: " << "(" << p_map.point.x << ", " << p_map.point.y << ")");
       if( ptr_detector_->newPotentialLandmark(p_map) == true)
+      //if( ptr_detector_->newPotentialLandmark(x, y, 0, tf_info) == true)
       {
         // Add to display
         //ROS_WARN_STREAM("Laser: " << x << "," << y
@@ -134,7 +137,7 @@ void ReflectionMarker::detectMarkerCallback(const sensor_msgs::LaserScan::ConstP
   {
     marker_ = marker;
     marker_map_ = marker_map;
-    ROS_WARN_STREAM("Size: " << marker_map_.points.size());
+    ROS_WARN_STREAM("Size: " << marker_map_.points.size() / 2);
   }
   // if(update)
   // {
@@ -157,7 +160,11 @@ void ReflectionMarker::detectMarkerWithSubmapCallback(const sensor_msgs::LaserSc
     //ros::Duration(1.0).sleep();
   }
 
-  //ROS_INFO_STREAM("Target map: FrameID->" << tf_info.frame_id_ << " child_id->" << tf_info.child_frame_id_);
+  for(auto& ptr_landmark: ptr_detector_->landmarks_)
+  {
+    ptr_landmark->reset();
+  }
+
   //ROS_INFO_STREAM("Position" << tf_info.getOrigin().getX()
   //                           << " " << tf_info.getOrigin().getY()
   //                           << " " << 0.0);
@@ -173,7 +180,7 @@ void ReflectionMarker::detectMarkerWithSubmapCallback(const sensor_msgs::LaserSc
 
   marker.header.frame_id = "laser";
   marker.header.stamp = ros::Time::now();
-  marker.ns = "reflection";
+  marker.ns = "reflection_laser";
   marker.id = 1;
   marker.type = visualization_msgs::Marker::LINE_LIST;
   marker.color.g = 1.0f;
@@ -202,20 +209,34 @@ void ReflectionMarker::detectMarkerWithSubmapCallback(const sensor_msgs::LaserSc
       geometry_msgs::PointStamped p;
       geometry_msgs::PointStamped p_map;
       p.header.stamp = ptr_scan_data->header.stamp;
-      p.header.frame_id = ptr_scan_data->header.frame_id;
+      p.header.frame_id = "laser";
       p.point.x = x;
       p.point.y = y;
       p.point.z = 0.0;
       p_map.header.stamp = ptr_scan_data->header.stamp;
       p_map.header.frame_id = "map";
-      p_map.header.frame_id = "laser";
+      //p_map.header.child_frame_id = "laser";
       p_map.point.x = point_map.getX();
       p_map.point.y = point_map.getY();
       p_map.point.z = 0.0;
-      if( ptr_detector_->newPotentialLandmarkWithSubmap(x,
-                                                        y,
-                                                        0.0,
-                                                        tf_info) == true)
+
+      //Landmark::Ptr ptr_potential_landmark = std::make_shared<Landmark>(p_map.point.x, p_map.point.y, 0.0);
+      Landmark::Ptr ptr_potential_landmark2 = std::make_shared<Landmark>(x, y, 0.0);
+      ptr_potential_landmark2->position_map_ = tf::Vector3(p_map.point.x, p_map.point.y, 0.);
+      //ROS_ERROR("P2 X: %f, Y: %f", ptr_potential_landmark2->position_.getX(), ptr_potential_landmark2->position_.getY());
+      //ROS_ERROR("P2 X: %f, Y: %f TF", ptr_potential_landmark2->position_tf_.getX(), ptr_potential_landmark2->position_tf_.getY());
+      //ROS_ERROR("P1 X: %f, Y: %f", ptr_potential_landmark->position_.getX(), ptr_potential_landmark->position_.getY());
+      //ROS_ERROR("P1 X: %f, Y: %f TF", ptr_potential_landmark->position_tf_.getX(), ptr_potential_landmark->position_tf_.getY());
+      //Landmark::Ptr ptr_potential_landmark = std::make_shared<Landmark>(x, y, 0.0);
+      //ptr_potential_landmark->position_tf_ = point_map;
+      if(ptr_detector_->newPotentialLandmark(ptr_potential_landmark2) == true)
+      //if( ptr_detector_->newPotentialLandmark(p_map) == true)
+      //if( ptr_detector_->newPotentialLandmark(p_map.point.x, p_map.point.y, 0.0, tf_info) == true)
+      //ptr_detector_->newPotentialLandmark(p_map);
+      //if( ptr_detector_->newPotentialLandmarkWithSubmap(x,
+      //                                                  y,
+      //                                                  0.0,
+      //                                                  tf_info) == true)
       {
         // Add to display
         //ROS_WARN_STREAM("Laser: " << x << "," << y
@@ -237,7 +258,7 @@ void ReflectionMarker::detectMarkerWithSubmapCallback(const sensor_msgs::LaserSc
   {
     marker_ = marker;
     marker_map_ = marker_map;
-    ROS_WARN_STREAM("Size: " << marker_map_.points.size());
+    ROS_WARN_STREAM("Size: " << marker_map_.points.size() /2 );
   }
   // if(update)
   // {
@@ -279,7 +300,7 @@ void ReflectionMarker::drawPriorLandmark()
   }
 }
 
-std::vector<Landmark::Ptr> LandmarkDetector::detectMarker(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data, const tf::StampedTransform& tf_info)
+std::vector<Landmark::Ptr> LandmarkDetector::detectLandmark(const sensor_msgs::LaserScan::ConstPtr& ptr_scan_data, const tf::StampedTransform& tf_info)
 {
   auto intensities = ptr_scan_data->intensities;
   auto ranges = ptr_scan_data->ranges;
@@ -296,17 +317,20 @@ std::vector<Landmark::Ptr> LandmarkDetector::detectMarker(const sensor_msgs::Las
   {
     if(intensities[i] > 800 && ranges[i] > 1.5 && ranges[i] < 12)
     {
-      ROS_INFO_STREAM("Range: " <<  ranges[i] << " Intensity: " << intensities[i]);
+      //ROS_INFO_STREAM("Range: " <<  ranges[i] << " Intensity: " << intensities[i]);
       auto angle = i*angle_increment + min_angle;
       auto y = ranges[i] * sin(angle);
       auto x = ranges[i] * cos(angle);
       tf::Vector3 point(x, y, 0.0);
-      //auto point_map = tf_info * point;
+      auto point_map = tf_info * point;
 
       //newPotentialLandmark(x, y, 0.0, tf_info);
 
       // newPotentialLandmark, if detected, save it with TF(From laser to the newest submap)
-      newPotentialLandmarkWithSubmap(x, y, 0.0, tf_info);
+      //newPotentialLandmarkWithSubmap(x, y, 0.0, tf_info);
+      Landmark::Ptr ptr_potential_landmark = std::make_shared<Landmark>(x, y, 0.0);
+      ptr_potential_landmark->position_map_ = tf::Vector3(point_map.getX(), point_map.getY(), 0.);
+      newPotentialLandmark(ptr_potential_landmark);
     }
   }
 
@@ -314,34 +338,41 @@ std::vector<Landmark::Ptr> LandmarkDetector::detectMarker(const sensor_msgs::Las
   {
     if(ptr_landmark->is_detected_ == true)
     {
-      ptr_landmark->update();
-      ptr_landmark->transform(tf_info, ptr_landmark->position_mean_);
+      //ptr_landmark->update();
+      //ptr_landmark->transform(tf_info, ptr_landmark->position_mean_);
       detected_landmarks.emplace_back(ptr_landmark);
     }
   }
   return detected_landmarks;
 }
 
-void ReflectionMarker::drawLandmark(const std::vector<Landmark::Ptr>& detected_landmarks)
+void ReflectionMarker::drawLandmark(const std::vector<Landmark::Ptr>& detected_landmarks,
+                                    const tf::StampedTransform& tf_info)
 {
   visualization_msgs::Marker marker;
 
-  marker.header.frame_id = "laser";
+  //marker.header.frame_id = "laser";
+  marker.header.frame_id = "map";
   marker.header.stamp = ros::Time::now();
+  //marker.header.stamp = tf_info.header.stamp;
   marker.ns = "reflection";
   marker.id = 1;
   marker.type = visualization_msgs::Marker::LINE_LIST;
   marker.color.g = 1.0f;
   marker.color.b = 0.7f;
-  marker.color.r = 0.5f;
+  marker.color.r = 0.9f;
   marker.color.a = 1.0;
   marker.scale.x = 0.09;
   
   for(const auto& ptr_landmark:detected_landmarks)
   {
     geometry_msgs::PointStamped p;
-    p.point.x = ptr_landmark->position_mean_.getX();
-    p.point.y = ptr_landmark->position_mean_.getY();
+    //p.header.frame_id = "laser";
+    //p.point.x = ptr_landmark->position_.getX();
+    //p.point.y = ptr_landmark->position_.getY();
+    p.header.frame_id = "map";
+    p.point.x = ptr_landmark->position_map_.getX();
+    p.point.y = ptr_landmark->position_map_.getY();
     p.point.z = 0.0f;
     marker.points.emplace_back(p.point);
     p.point.z = 2.0f;
@@ -351,8 +382,8 @@ void ReflectionMarker::drawLandmark(const std::vector<Landmark::Ptr>& detected_l
   if(marker.points.size() > 0)
   {
     marker_detected_ = marker;
+    ROS_INFO_STREAM("Detected landmark: " << detected_landmarks.size());
   }
-  ROS_INFO_STREAM("Detected landmark: " << detected_landmarks.size());
 }
 
 
@@ -400,11 +431,11 @@ void LandmarkDetector::readLandmark(const std::string& prior_landmark_filepath)
   {
     double x,y;
     file_in >> x >> y;
-    ROS_INFO_STREAM("X: " << x << ", Y: " << y);
     if(file_in.good() == false)
     {
       break;
     }
+    ROS_INFO_STREAM("X: " << x << ", Y: " << y);
     Landmark::Ptr ptr_prior_landmark= std::make_shared<Landmark>(x, y, 0.);
     ptr_prior_landmark->id_ = Landmark::count_landmark++;
     for(int i=0;i<4;++i)
@@ -423,8 +454,8 @@ void LandmarkDetector::readLandmark(const std::string& prior_landmark_filepath)
 bool LandmarkDetector::isAttached(const Landmark::Ptr& ptr_landmark,
                                   const Landmark::Ptr& ptr_potential_landmark)
 {
-  auto error = ptr_landmark->position_tf_.distance(ptr_potential_landmark->position_tf_);
-  ROS_INFO_STREAM("Error: " << error << " threshold: " << threshold_);
+  auto error = ptr_landmark->position_map_.distance(ptr_potential_landmark->position_map_);
+  //ROS_INFO_STREAM("Error: " << error << " threshold: " << threshold_);
   if(error < threshold_)
   {
     return true;
@@ -436,6 +467,9 @@ bool LandmarkDetector::newPotentialLandmark(double x, double y, double z)
 {
   Landmark::Ptr ptr_potential_landmark = std::make_shared<Landmark>(x, y, z);
   ptr_potential_landmark->id_ = Landmark::count_landmark;
+  //ptr_potential_landmark->transform(tf_info);
+  auto pos_tf = ptr_potential_landmark->position_tf_;
+  ROS_INFO_STREAM("TF_map: " << "(" << pos_tf.getX() << ", " << pos_tf.getY() << ")");
   bool attached_flag = false;
   if(landmarks_.size() == 0)
   {
@@ -472,10 +506,79 @@ bool LandmarkDetector::newPotentialLandmark(double x, double y, double z)
   return attached_flag;
 }
 
+bool LandmarkDetector::newPotentialLandmark(Landmark::Ptr& ptr_potential_landmark)
+{
+  //Landmark::Ptr ptr_potential_landmark = std::make_shared<Landmark>(x, y, z);
+  //ptr_potential_landmark->id_ = Landmark::count_landmark;
+  //ptr_potential_landmark->transform(tf_info);
+  //auto pos_tf = ptr_potential_landmark->position_tf_;
+  //ROS_INFO_STREAM("TF_map: " << "(" << pos_tf.getX() << ", " << pos_tf.getY() << ")");
+  //===================================================================================
+  auto submap_size = submap_list_.submap.size();
+  auto pos_map = ptr_potential_landmark->position_map_;
+  //===================================================================================
+  bool attached_flag = false;
+  if(landmarks_.size() == 0)
+  {
+    ROS_WARN_STREAM("There is a suspension landmark");
+    landmarks_.emplace_back(ptr_potential_landmark);
+    return true;
+  }
+  else
+  {
+    for(auto& ptr_landmark:landmarks_)
+    {
+      if(ptr_landmark == nullptr)
+      {
+        ROS_ERROR_STREAM("Nullptr landmark");
+        continue;
+      }
+      if(isAttached(ptr_landmark, ptr_potential_landmark) == true)
+      {
+        ROS_INFO_STREAM("Detected");
+        ptr_potential_landmark->id_ = ptr_landmark->id_;
+        ptr_landmark->is_detected_ = true;
+        ptr_landmark->addClusterLandmark(ptr_potential_landmark);
+        ++ptr_landmark->num_observation_;
+        attached_flag = true;
+
+        auto index_submap_attached = submap_size - 1;
+        //ROS_WARN_STREAM("RUN before submap");
+        if(index_submap_attached >= 0 && submap_size > 0)
+        {
+          // Prepare Submap info
+          auto origin = submap_list_.submap[index_submap_attached].pose.position;
+          auto quaternion = submap_list_.submap[index_submap_attached].pose.orientation;
+          tf::Vector3 ori(origin.x, origin.y, origin.z);
+          tf::Quaternion quat(quaternion.x,quaternion.y,quaternion.z,quaternion.w);
+          tf::Transform tf_submap_map(quat, ori);
+          auto pos_landmark_at_submap = tf_submap_map.inverse() * pos_map;
+          ptr_potential_landmark->submap_index_ = index_submap_attached;
+          ptr_potential_landmark->position_submap_ = pos_landmark_at_submap;
+          ROS_INFO_STREAM("map: " << "(" << pos_map.getX() << ", " << pos_map.getY() << ")");
+          ROS_INFO_STREAM("submap: " << "(" << pos_landmark_at_submap.getX() << ", " << pos_landmark_at_submap.getY() << ")");
+          break;
+        }
+        //ROS_WARN_STREAM("RUN after submap");
+      }
+    }
+    if(attached_flag == false)
+    {
+      //Landmark::count_landmark++;
+      //ptr_potential_landmark->id_ = Landmark::count_landmark;
+      //landmarks_.emplace_back(ptr_potential_landmark);
+    }
+  }
+  landmarks_save = landmarks_;
+  return attached_flag;
+}
+
 bool LandmarkDetector::newPotentialLandmark(double x, double y, double z, const tf::StampedTransform& tf_info)
 {
   Landmark::Ptr ptr_potential_landmark = std::make_shared<Landmark>(x, y, z);
-  ptr_potential_landmark->transform(tf_info);
+  //ptr_potential_landmark->transform(tf_info);
+  auto pos_tf = ptr_potential_landmark->position_tf_;
+  ROS_INFO_STREAM("TF_map: " << "(" << pos_tf.getX() << ", " << pos_tf.getY() << ")");
   ptr_potential_landmark->id_ = Landmark::count_landmark;
   //ROS_INFO_STREAM("Laser x: " << x << " y: " << y);
   //ROS_INFO_STREAM("Map x: " << ptr_potential_landmark->position_tf_.getX()
@@ -521,6 +624,9 @@ bool LandmarkDetector::newPotentialLandmarkWithSubmap(double x, double y, double
   ptr_potential_landmark->transform(tf_info);
   ptr_potential_landmark->id_ = Landmark::count_landmark;
   auto submap_size = submap_list_.submap.size();
+  auto pos_tf = ptr_potential_landmark->position_tf_;
+  ROS_INFO_STREAM("TF_map: " << "(" << pos_tf.getX() << ", " << pos_tf.getY() << ")");
+  //ptr_potential_landmark->id_ = Landmark::count_landmark;
   //ROS_INFO_STREAM("Laser x: " << x << " y: " << y);
   //ROS_INFO_STREAM("Map x: " << ptr_potential_landmark->position_tf_.getX()
   //                << " y: " << ptr_potential_landmark->position_tf_.getY());
@@ -547,20 +653,20 @@ bool LandmarkDetector::newPotentialLandmarkWithSubmap(double x, double y, double
         ++ptr_landmark->num_observation_;
         attached_flag = true;
 
-        auto index_submap_attached = submap_size - 1;
-        if(index_submap_attached >= 0)
-        {
-          // Prepare Submap info
-          auto origin = submap_list_.submap[index_submap_attached].pose.position;
-          auto quaternion = submap_list_.submap[index_submap_attached].pose.orientation;
-          tf::Vector3 ori(origin.x, origin.y, origin.z);
-          tf::Quaternion quat(quaternion.x,quaternion.y,quaternion.z,quaternion.w);
-          tf::Transform tf_submap_map(quat, ori);
-          auto pos_landmark_at_submap = tf_submap_map.inverse() * tf_info * ptr_potential_landmark->position_;
-          ptr_potential_landmark->submap_index_ = index_submap_attached;
-          ptr_potential_landmark->position_submap_ = pos_landmark_at_submap;
-          
-        }
+        //auto index_submap_attached = submap_size - 1;
+        //if(index_submap_attached >= 0)
+        //{
+        //  // Prepare Submap info
+        //  auto origin = submap_list_.submap[index_submap_attached].pose.position;
+        //  auto quaternion = submap_list_.submap[index_submap_attached].pose.orientation;
+        //  tf::Vector3 ori(origin.x, origin.y, origin.z);
+        //  tf::Quaternion quat(quaternion.x,quaternion.y,quaternion.z,quaternion.w);
+        //  tf::Transform tf_submap_map(quat, ori);
+        //  auto pos_landmark_at_submap = tf_submap_map.inverse() * tf_info * ptr_potential_landmark->position_;
+        //  ptr_potential_landmark->submap_index_ = index_submap_attached;
+        //  ptr_potential_landmark->position_submap_ = pos_landmark_at_submap;
+        //  
+        //}
       }
     }
     if(attached_flag == false)
@@ -608,7 +714,7 @@ void handler_submap(int signum)
   ROS_INFO("%s is received, Terminating the node...", strsignal(signum));
   std::ofstream file_out;
   std::string prefix(getenv("HOME"));
-  file_out.open(prefix+"/poster_landmark.txt");
+  file_out.open(prefix+"/poster_landmark_with_submap.txt");
   ROS_INFO_STREAM("Save align landmarks(submap)");
   ROS_INFO_STREAM("Size of landmark: " << landmarks_save.size());
 
